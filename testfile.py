@@ -20,3 +20,5 @@ network_1.optimize(solver_name = 'gurobi')
 
 network_1.generators_t.p.plot(kind = 'bar')
 network_1.buses_t.marginal_price.plot()
+
+plot.show()
