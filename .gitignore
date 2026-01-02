@@ -1,6 +1,7 @@
 # Ignore virtual environment folder
 myvenv/
 energiesysteme
+.venv/
 
 # Ignore Python cache files
 __pycache__/
