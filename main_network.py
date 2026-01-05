@@ -30,7 +30,17 @@ network.add(
     bus="electricity",
     p_nom_extendable=True,  # Anzahl der Module bleibt offen
     p_max_pu=solar_potential,  # Zeitabhängiges Sonneneinstrahlungsprofil
+    marginal_cost=0.0,  # PV hat keine Brennstoffkosten
+    capital_cost=100.0,  # Beispielwert, anpassen nach Bedarf
 )
+# network.add(
+#     "Generator",
+#     name="dummy_generator",
+#     bus="electricity",
+#     p_nom_extendable=True,
+#     marginal_cost=1000  # Hohe Kosten, um die Nutzung zu minimieren
+# )
+
 # network.add(
 #     "Generator",
 #     name = "solar_thermal",
@@ -54,6 +64,8 @@ network.add(
     bus0="electricity",
     bus1="heat",
     efficiency = efficiency_heat_pump,
+    p_nom_extendable = True,
+    capital_cost=0.0,  # Beispielwert, anpassen nach Bedarf
 )
 
 #TODO: max_hours = 2, was ist das
@@ -65,6 +77,7 @@ network.add(
     max_hours = 3, # Speicherdauer in Stunden bei voller Leistung #Beispielwert
     p_nom_extendable = True,
     cyclic_state_of_charge = True, # Der Ladezustand am Ende des Zeitraums ist gleich dem Anfangszustand
+    capital_cost=0.0,  # Beispielwert, anpassen nach Bedarf
 )
 # network.add(
 #     "StorageUnit",
@@ -98,4 +111,5 @@ network.add(
 # )
 
 network.optimize(solver_name="gurobi")
-network.generators.p_nom_opt
+print(network.generators.p_nom_opt)
+print(network.storage_units.p_nom_opt)
