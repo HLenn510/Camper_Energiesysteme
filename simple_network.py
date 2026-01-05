@@ -1,6 +1,6 @@
-import pandas as pd
+#import pandas as pd
 import pypsa
-import gurobipy
+import matplotlib.pyplot as plt
 
 network = pypsa.Network()
 network.set_snapshots(range(24))  # Beispiel: 24 Stunden
@@ -71,3 +71,31 @@ network.add(
 network.optimize(solver_name="gurobi")
 print(network.generators.p_nom_opt)
 print(network.storage_units.p_nom_opt)
+
+# Daten aus dem optimierten Netzwerk extrahieren
+hours = network.snapshots
+load = network.loads_t.p.loc[:, network.loads.bus == "electricity"].sum(axis=1)  # Nur elektrische Last
+solar = network.generators_t.p.loc[:, "pv_solar"]  # Solarleistung
+storage = network.storage_units_t.p.loc[:, "battery"]  # Speicherleistung
+
+# Daten für Wärme-Last und Wärmepumpe extrahieren
+#heat_load = network.loads_t.p.loc[:, network.loads.bus == "heat"].sum(axis=1)  # Nur Wärme-Last
+heat_pump = network.links_t.p0.loc[:, "heat_pump"]  # Leistung der Wärmepumpe
+
+# Kombinierter Plot für Wärme-Last und Wärmepumpe
+plt.figure(figsize=(10, 6))
+plt.plot(hours, load, label="Stromlast", color="blue")
+plt.plot(hours, solar, label="Solarleistung (p_nom)", color="orange")
+plt.plot(hours, storage, label="Speicherleistung (p_nom)", color="green")
+#plt.plot(hours, heat_load, label="Wärmelast", color="red")
+plt.plot(hours, heat_pump, label="Wärmepumpe (Leistung)", color="purple")
+
+# Achsenbeschriftungen und Titel
+plt.xlabel("Stunden des Tages")
+plt.ylabel("Leistung (kWh)")
+plt.title("Optimiertes Netzwerk: Lasten und Leistungen")
+plt.legend()
+plt.grid()
+
+# Plot anzeigen
+plt.show()

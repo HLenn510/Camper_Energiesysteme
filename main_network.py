@@ -110,6 +110,7 @@ network.add(
 #     p_set=data['WW-Ladung [MWh]'],
 # )
 
+
 network.optimize(solver_name="gurobi")
 print(network.generators.p_nom_opt)
 print(network.storage_units.p_nom_opt)
