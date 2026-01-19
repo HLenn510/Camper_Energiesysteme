@@ -1,4 +1,4 @@
-#import pandas as pd
+import pandas as pd
 import pypsa
 import matplotlib.pyplot as plt
 
@@ -67,6 +67,41 @@ network.add(
     p_set=[1.0, 0.8, 0.7, 0.6, 0.8, 1.5, 3.0, 4.5, 5.0, 4.8, 4.2, 3.8, 3.5, 3.2, 3.0, 3.5, 4.0, 4.8, 5.5, 4.0, 3.0, 2.0, 1.5, 1.2],
 )
 
+
+## Read variante and add PV generators if columns are tuples (pv_active, pv_leistung_optimieren)
+try:
+    variante = pd.read_excel("System_Input.xlsx")
+    # Handle cases where column labels may be tuples of varying length
+    for i, col in enumerate(variante.columns):
+        pv_active = False
+        pv_pnom_extendable = False
+        if isinstance(col, (tuple, list)):
+            if len(col) >= 1:
+                pv_active = bool(col[0])
+            if len(col) >= 2:
+                pv_pnom_extendable = bool(col[1])
+        else:
+            # fallback: try to read values from the first rows for that column
+            try:
+                pv_active = bool(variante.iloc[0][col])
+            except Exception:
+                pv_active = False
+            try:
+                pv_pnom_extendable = bool(variante.iloc[1][col]) if variante.shape[0] > 1 else False
+            except Exception:
+                pv_pnom_extendable = False
+        network.add(
+            "Generator",
+            name=f"PV_{i}",
+            bus="electricity",
+            p_nom=5,
+            p_nom_extendable=pv_pnom_extendable,
+            active=pv_active,
+            overwrite=True,
+        )
+except Exception:
+    # If reading fails, skip adding variant PVs
+    pass
 
 network.optimize(solver_name="gurobi")
 print(network.generators.p_nom_opt)
