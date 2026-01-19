@@ -9,8 +9,8 @@ import pandas as pd
 import pypsa
 
 #Ort setzen wo nach einer Dateil gesucht werden soll
-#import os
-#os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
+import os
+os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
 
 
 variante= pd.read_excel("System_Input.xlsx")
