@@ -8,12 +8,12 @@ def annuity(capex, n, r=0.035):
         annuity_factor = r / (1 - (1 + r) ** -n)
         return capex * annuity_factor
     
-
-temperature = np.random.uniform(-20, 35, 8760)  # Beispielhafte Außentemperaturen für ein Jahr
+hours = 24*30*3   # Beispiel: Sommerferien 2025 stündlich
+temperature = np.random.uniform(-20, 35, hours)  # Beispielhafte Außentemperaturen für eine Sommerferien Saison
 
 
 n = pypsa.Network()
-n.set_snapshots(range(8760))  # Ein Jahr mit stündlichen Zeitschritten
+n.set_snapshots(range(hours))  # Eine Sommerferien Saison mit stündlichen Zeitschritten
 n.add("Bus", "electricity")
 n.add("Bus", "thermal_heating")
 n.add("Bus", "thermal_cooling")
@@ -146,8 +146,8 @@ n.add("Link",
 ########################### Elektrischer Boiler (Camper, extendable) ###########################
 # Beispiel: Truma Therme TT2 (elektrischer Warmwasserbereiter für Camper)
 efficiency_boiler = 0.98  # Wirkungsgrad (98%)
-p_nom_kw_boiler = 1.4  # Elektrische Nennleistung in kW
-capex_euro_boiler = 800.0  # Investitionskosten in Euro (Richtwert)
+p_nom_kw_boiler = 0.3  # Elektrische Nennleistung in kW
+capex_euro_boiler = 229  # Investitionskosten in Euro (Richtwert)
 lifetime_years_boiler = 15  # Lebensdauer in Jahren
 capex_euro_boiler_per_kw = capex_euro_boiler / p_nom_kw_boiler  # €/kW
 n.add("Link",
@@ -190,3 +190,32 @@ n.add("StorageUnit",
 )
 
 
+################################### Lasten (Camper) ###########################
+electrical_load_camper = [],  # Beispielwerte für elektrische Last in kW (8760 Stunden)
+n.add(
+    "Load",
+    "electrical_load",
+    bus="electricity",
+    p_set=electrical_load_camper,  # Beispielwerte für elektrische Last in kW (8760 Stunden)
+)
+thermal_load_camper = [],  # Beispielwerte für thermische Last in kW (8760 Stunden)
+n.add(
+    "Load",
+    "heating_load",
+    bus="thermal_heating",
+    p_set=thermal_load_camper,  # Beispielwerte für thermische Last in kW (8760 Stunden)
+)
+cooling_load_camper = [],  # Beispielwerte für Kühlungs-Last in kW (8760 Stunden)
+n.add(
+    "Load",
+    "cooling_load",
+    bus="thermal_cooling",
+    p_set=cooling_load_camper,  # Beispielwerte für Kühlungs-Last in kW (8760 Stunden)
+)
+hot_water_load_camper = [],  # Beispielwerte für Warmwasser-Last in kW (8760 Stunden)
+n.add(
+    "Load",
+    "warm_water_load",
+    bus="hot_water",
+    p_set=hot_water_load_camper,  # Beispielwerte für Warmwasser-Last in kW (8760 Stunden)
+)
