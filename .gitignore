@@ -1,14 +1,10 @@
 # Ignore virtual environment folder
 myvenv/
 energiesysteme
-<<<<<<< Updated upstream
+franks_test.py
 .venv/
 simuenv3127/
 simu/
-=======
-simu
-
->>>>>>> Stashed changes
 # Ignore Python cache files
 __pycache__/
 *.py[cod]
