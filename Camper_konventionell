@@ -1,0 +1,131 @@
+import pypsa
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+n= pypsa.Network()
+n.set_snapshots(range(24))  # Beispiel: 24 Stunden
+temperature = np.random.uniform(-20, 35, hours)  # Beispielhafte Außentemperaturen für eine Sommerferien Saison
+
+#Dieselkosten
+diesel_energy_density = 9.8,
+diesel_price_per_liter = 1.70,
+diesel_marginal_cost = diesel_price_per_liter / diesel_energy_density,
+
+#BOSCH wandhängender Systemspeicher STORA, W 50 OB B, 50 L
+heat_store_e_nom = 10.0  #???
+lifespan_heat_store = 25  # Jahre
+capital_cost = 1160.5
+capital_cost_heat_store = capital_cost / lifespan_heat_store
+heat_storage_loss_factor = 0.0138  # 1.38% Verlust pro Stunde
+heat_store_e_nom=2.9 #2.9kWh 
+
+#Sprinter-Kosten und Lebensdauer
+capital_cost_sprinter_price = 50235.14
+lifetime_Sprinter = 20
+capital_cost_sprinter = capital_cost_sprinter_price/ lifetime_Sprinter,
+
+#Kombidieselheizung - Aqua-Hot Gen1 D4E Diesel
+capital_cost_kombi_heater = 1795
+lifespan_kombi_heater = 10
+capital_cost_kombi_heater_annual = capital_cost_kombi_heater / lifespan_kombi_heater
+p_kombi_heater = 4.0  #kW
+efficiency_kombi_heater = 0.63
+#efficiency2_kombi_heater= -0.012 #durch elektrische Verluste 
+
+#ACC
+#Annahme verhält sich ähnlich wie Viessman 151-A04, 230V~
+#Annahme betreiben bei 45 Grad heizen,  Seite 31
+temp_heating = [-20, -15, -7, -2, 7, 10, 20, 30 ,35]
+el_power_heating = [1.33, 1.39, 1.46, 0.77, 1.02, 1.01, 0.98, 0.92, 0.88]
+cop_heating = [1.82, 2.06, 2.52, 3.12, 3.67, 4.05, 5.65, 8.09, 8.70]
+hp_p_nom_heating = 0.8 # A7/W35 
+el_p_pu_heating = np.interp(temperature, temp_heating, el_power_heating) / hp_p_nom_heating
+#Betreiben bei W 7,   Seite 32
+temp_cooling = [20, 25, 27, 30, 35, 40, 45]
+el_power_cooling = [0.65, 0.73, 0.76, 0.81, 0.90, 0.97, 0.98]
+eer_cooling = [5.4, 4.4, 4.1, 3.6, 2.9, 2.3, 1.8]
+hp_p_nom_cooling = 0.85 #A35/W18
+el_p_pu_cooling = np.interp(temperature, temp_cooling, el_power_cooling) / hp_p_nom_cooling
+
+n.add("Bus", "diesel")
+
+n.add("Bus", "heat")
+
+n.add("Bus", "warm_water")
+
+n.add("Bus", "electricity")
+
+n.add("Bus", "thermal_heating")
+
+n.add("Bus", "thermal_cooling")
+
+n.add("Store",
+    name= "heat_store",
+    bus="heat",
+    capital_cost= capital_cost_heat_store,
+    e_nom = heat_store_e_nom,  
+    standing_loss = heat_storage_loss_factor,
+    lifetime = lifespan_heat_store
+)
+
+n.add("Generator",
+    name= "diesel_supply",
+    bus="diesel",
+    p_nom_extendable=True,
+    marginal_cost = diesel_marginal_cost*1000, # Preis pro MWh
+    capital_cost = capital_cost_sprinter,
+)
+
+n.add(
+    "Link",
+    name="combi_heater",
+    bus0="diesel", 
+    bus1="thermal_heating",          # Ausgang: Wärme (Dein Heat-Bus)
+    p_nom=p_kombi_heater,# Soll der Solver die Größe bestimmen? Oder fix z.B. p_nom=4 (4kW)
+    efficiency=efficiency_kombi_heater,      # 85% Wirkungsgrad
+    capital_cost= capital_cost_kombi_heater_annual, # Anschaffung
+    marginal_cost=0    
+)  
+
+n.add(
+    "Link",
+    name="warmwater",
+    bus0="thermal_heating", 
+    bus1="warm_water",          # Ausgang: Wärme (Dein Heat-Bus)
+    p_nom_extendable=True,# Soll der Solver die Größe bestimmen? Oder fix z.B. p_nom=4 (4kW)
+    efficiency=0.85,      # ???
+    capital_cost= 0, # Anschaffung
+    marginal_cost=0    
+)  
+
+n.add(
+    "Link",
+    name="heating",
+    bus0="thermal_heating", 
+    bus1="heat",          # Ausgang: Wärme (Dein Heat-Bus)
+    p_nom_extendable=True,# Soll der Solver die Größe bestimmen? Oder fix z.B. p_nom=4 (4kW)
+    efficiency=0.85,      # ???
+    capital_cost= 0, # Anschaffung
+    marginal_cost=0    
+)  
+
+n.add(
+    "Link",
+    name="diesel_generator",
+    bus0="diesel", 
+    bus1="electricity",         
+    p_nom= 2.9, #2.9 kW Leistung
+    efficiency=0.5,      # 50% Wirkungsgrad
+    capital_cost= 8756.85, # Anschaffung
+    marginal_cost=0    
+)
+n.add("Link",
+    "ACC",
+    bus0="electrical",
+    bus1="thermal_cooling",
+    p_nom_extendable=True,
+    efficiency=np.interp(temperature, temp_cooling, eer_cooling),
+    p_max_pu=el_p_pu_cooling,
+    capital_cost=0.0, 
+)
