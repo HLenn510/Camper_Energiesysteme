@@ -134,3 +134,17 @@ for i, (pv, pv_leistung_optimieren, pv_nom, pv_capital_cost,
     #Erhöhe den Index für die nächste Variante
     i = i +1
 
+
+#COP Kühlen und Heizen 
+#Annahme verhält sich ähnlich wie Viessman 151-A04, 230V~
+#Annhame betreiben bei 45 Grad heizen,  Seite 31
+temp_heating = [-20, -15, -7, -2, 7, 10, 20, 30 ,35]
+el_power_heating = [1.33, 1.39, 1.46, 0.77, 1.02, 1.01, 0.98, 0.92, 0.88]
+cop_heating = [1.82, 2.06, 2.52, 3.12, 3.67, 4.05, 5.65, 8.09, 8.70]
+hp_p_nom_heating = 0.8 # A7/W35 
+
+#Betreiben bei W 7,   Seite 32
+temp_cooling = [20, 25, 27, 30, 35, 40, 45]
+el_power_cooling = [0.65, 0.73, 0.76, 0.81, 0.90, 0.97, 0.98]
+eer_cooling = [5.4, 4.4, 4.1, 3.6, 2.9, 2.3, 1.8]
+hp_p_nom_cooling = 0.85 #A35/W18
