@@ -1,6 +1,7 @@
 import pypsa
+import numpy as np
 #Funktion zur Berechnung von Annuity mitdefault 3% Zins, n steht für Jahre, capex für Investitionskosten
-def annuity(capex, n, r=0.03):
+def annuity(capex, n, r=0.035):
     if r == 0:
         return capex / n
     else:
@@ -8,9 +9,31 @@ def annuity(capex, n, r=0.03):
         return capex * annuity_factor
     
 
+temperature = np.random.uniform(-20, 35, 8760)  # Beispielhafte Außentemperaturen für ein Jahr
+
 
 n = pypsa.Network()
+n.set_snapshots(range(8760))  # Ein Jahr mit stündlichen Zeitschritten
+n.add("Bus", "electricity")
+n.add("Bus", "thermal_heating")
+n.add("Bus", "thermal_cooling")
+n.add("Bus", "hot_water")
+n.add("Bus", "heatpump_electrical")
 
+############################ GENERATOR: Photovoltaik-Anlage (Camper) ##############################
+# Beispiel: 500W Photovoltaik-Anlage für Camper
+capital_cost_pv_camper = 200.0  # Investitionskosten in Euro (Richtwert)
+lifetime_years_pv_camper = 20  # Lebensdauer in Jahren
+p_nom_per_module = 0.5  # Leistung pro Modul in kW
+capital_cost_pv_camper_per_kw = capital_cost_pv_camper / p_nom_per_module  # €/kW
+n.add("Generator",
+    "500W Photovoltaik-Anlage (Camper)",
+    bus="electricity",
+    p_nom_extendable=True,  # Anzahl der Module bleibt offen
+    p_max_pu=[], # Zeitabhängiges Sonneneinstrahlungsprofil kommt von renewablesninja
+    capital_cost=annuity(capital_cost_pv_camper_per_kw, lifetime_years_pv_camper),  # Beispielwert, anpassen nach Bedarf
+    marginal_cost=0.0,  # PV hat keine Brennstoffkosten
+)
 
 ############################# Batterie Speicher vom eSprinter PRO 314 ###############################
 capacity_kwh_eSprinter = 80.7  # Kapazität in kWh
@@ -49,8 +72,8 @@ n.add("StorageUnit",
     bus="electricity",
 
     # Technische Daten
-    p_nom=p_nom_kw_battery,           # 2.4 kW (fest)
-    max_hours=capacity_kwh_battery / p_nom_kw_battery, # 1 Stunde (ergibt 2.4 kWh)
+    p_nom_extendable=True,
+    max_hours=capacity_kwh_battery / p_nom_kw_battery, #1 Stunde (ergibt 2.4 kWh)
 
     # Wirtschaftliche Daten (Annualisiert)
     capital_cost=annuity(capex_euro_battery_per_kwh * capacity_kwh_battery, lifetime_years_battery), # Beispiel: 3.000€ Investition über 10 Jahre
@@ -62,26 +85,63 @@ n.add("StorageUnit",
 )
 
 ########################### Wärmepumpe (Camper, fester COP, extendable) ###########################
-# Beispiel: Dometic FreshJet 2200 (Wärmepumpe, Dachklima)
-cop_heatpump = 2.1  # Leistungszahl (COP, konstant; Richtwert aus Heizleistung/El.-Leistung)
-p_nom_kw_heatpump_el = 1.05  # Elektrische Nennleistung in kW (Richtwert)
-p_th_kw_heatpump = p_nom_kw_heatpump_el * cop_heatpump  # Thermische Leistung in kW
-capex_euro_heatpump = 2200.0  # Investitionskosten in Euro (Richtwert)
+# Viessmann Vitocal 150A04 Compact
+# cop_heatpump = 2.1  # Leistungszahl (COP, konstant; Richtwert aus Heizleistung/El.-Leistung)
+p_nom_kw_heatpump_el = 0.8  # Elektrische Nennleistung in kW (Richtwert) 
+# p_th_kw_heatpump = p_nom_kw_heatpump_el * cop_heatpump  # Thermische Leistung in kW
+capex_euro_heatpump = 2200  # Investitionskosten in Euro (Richtwert)
 lifetime_years_heatpump = 10  # Lebensdauer in Jahren
 capex_euro_heatpump_per_kw = capex_euro_heatpump / p_nom_kw_heatpump_el  # €/kW
 n.add("Link",
-    "Dometic FreshJet 2200 (Wärmepumpe, fester COP, extendable)",
+    "Viessmann Vitocal 150A04 Compact",
     bus0="electricity",
-    bus1="thermal",
+    bus1="heatpump_electrical",
 
     # Technische Daten
     p_nom_extendable=True,
-    efficiency=cop_heatpump,     # COP (elektrisch -> thermisch)
+    efficiency=1,     # Elektrisch zu Elektrisch (Wärmepumpe hat eigenen COP in den folgenden Links)
     
-
     # Wirtschaftliche Daten (Annualisiert)
     capital_cost=annuity(capex_euro_heatpump_per_kw, lifetime_years_heatpump),
 )
+
+########################## Wärmepumpen Links mit verschiedenen COPs (Camper) ##########################
+#COP Kühlen und Heizen 
+#Annahme verhält sich ähnlich wie Viessman 151-A04, 230V~
+#Annhame betreiben bei 45 Grad heizen,  Seite 31
+temp_heating = [-20, -15, -7, -2, 7, 10, 20, 30 ,35]
+el_power_heating = [1.33, 1.39, 1.46, 0.77, 1.02, 1.01, 0.98, 0.92, 0.88]
+cop_heating = [1.82, 2.06, 2.52, 3.12, 3.67, 4.05, 5.65, 8.09, 8.70]
+hp_p_nom_heating = 0.8 # A7/W35 
+el_p_pu_heating = np.interp(temperature, temp_heating, el_power_heating) / hp_p_nom_heating
+
+#Betreiben bei W 7,   Seite 32
+temp_cooling = [20, 25, 27, 30, 35, 40, 45]
+el_power_cooling = [0.65, 0.73, 0.76, 0.81, 0.90, 0.97, 0.98]
+eer_cooling = [5.4, 4.4, 4.1, 3.6, 2.9, 2.3, 1.8]
+hp_p_nom_cooling = 0.85 #A35/W18
+el_p_pu_cooling = np.interp(temperature, temp_cooling, el_power_cooling) / hp_p_nom_cooling
+
+n.add("Link",
+    "Wärmepumpe Heizen (COP variabel)",
+    bus0="heatpump_electrical",
+    bus1="thermal_heating",
+    p_nom_extendable=True,
+    efficiency=np.interp(temperature, temp_heating, cop_heating),
+    p_max_pu=el_p_pu_heating,
+    capital_cost=0.0,  # Kosten sind im Wärmepumpen-Hauptlink enthalten
+)
+
+n.add("Link",
+    "Wärmepumpe Kühlen (COP variabel)",
+    bus0="heatpump_electrical",
+    bus1="thermal_cooling",
+    p_nom_extendable=True,
+    efficiency=np.interp(temperature, temp_cooling, eer_cooling),
+    p_max_pu=el_p_pu_cooling,
+    capital_cost=0.0,  # Kosten sind im Wärmepumpen-Hauptlink enthalten
+)
+
 
 ########################### Elektrischer Boiler (Camper, extendable) ###########################
 # Beispiel: Truma Therme TT2 (elektrischer Warmwasserbereiter für Camper)
@@ -112,7 +172,7 @@ capex_euro_hot_water_storage_per_kwh = capex_euro_hot_water_storage / capacity_k
 lifetime_years_hot_water_storage = 15  # Lebensdauer in Jahren
 standing_loss_hot_water_storage = 0.02  # Wärmeverlust (2% pro Stunde)
 n.add("StorageUnit",
-    "Warmwasserspeicher 30L (Camper)",
+    "Warmwasserspeicher (Camper)",
     bus="hot_water",
 
     # Technische Daten
