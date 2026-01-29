@@ -1,5 +1,6 @@
 import pypsa
 import numpy as np
+import pandas as pd
 #Funktion zur Berechnung von Annuity mitdefault 3% Zins, n steht für Jahre, capex für Investitionskosten
 def annuity(capex, n, r=0.035):
     if r == 0:
@@ -8,8 +9,11 @@ def annuity(capex, n, r=0.035):
         annuity_factor = r / (1 - (1 + r) ** -n)
         return capex * annuity_factor
     
-hours = 24*30*3   # Beispiel: Sommerferien 2025 stündlich
-temperature = np.random.uniform(-20, 35, hours)  # Beispielhafte Außentemperaturen für eine Sommerferien Saison
+hours = 1056  # Beispiel: Sommerferien 2025 stündlich
+
+data_frame = pd.read_csv("loads_pv_temp_hourly.csv")
+temperature = data_frame["Außentemperatur [°C]"]
+pv_p_max_pu = data_frame["PV_Erzeugung [kW]"]
 
 
 n = pypsa.Network()
@@ -30,7 +34,7 @@ n.add("Generator",
     "500W Photovoltaik-Anlage (Camper)",
     bus="electricity",
     p_nom_extendable=True,  # Anzahl der Module bleibt offen
-    p_max_pu=[], # Zeitabhängiges Sonneneinstrahlungsprofil kommt von renewablesninja
+    p_max_pu=pv_p_max_pu, # Zeitabhängiges Sonneneinstrahlungsprofil kommt von renewablesninja
     capital_cost=annuity(capital_cost_pv_camper_per_kw, lifetime_years_pv_camper),  # Beispielwert, anpassen nach Bedarf
     marginal_cost=0.0,  # PV hat keine Brennstoffkosten
 )
@@ -191,31 +195,36 @@ n.add("StorageUnit",
 
 
 ################################### Lasten (Camper) ###########################
-electrical_load_camper = [],  # Beispielwerte für elektrische Last in kW (8760 Stunden)
+electrical_load_camper = data_frame["Elektrische_Last [kW]"]  # Beispielwerte für elektrische Last in kW (8760 Stunden)
 n.add(
     "Load",
     "electrical_load",
     bus="electricity",
     p_set=electrical_load_camper,  # Beispielwerte für elektrische Last in kW (8760 Stunden)
 )
-thermal_load_camper = [],  # Beispielwerte für thermische Last in kW (8760 Stunden)
+thermal_load_camper = data_frame["Wärme_Last 23°C [W]"]  # Beispielwerte für thermische Last in kW (8760 Stunden)
 n.add(
     "Load",
     "heating_load",
     bus="thermal_heating",
     p_set=thermal_load_camper,  # Beispielwerte für thermische Last in kW (8760 Stunden)
 )
-cooling_load_camper = [],  # Beispielwerte für Kühlungs-Last in kW (8760 Stunden)
+cooling_load_camper = data_frame["Kühl_Last 23°C [W]"]  # Beispielwerte für Kühlungs-Last in kW (8760 Stunden)
 n.add(
     "Load",
     "cooling_load",
     bus="thermal_cooling",
     p_set=cooling_load_camper,  # Beispielwerte für Kühlungs-Last in kW (8760 Stunden)
 )
-hot_water_load_camper = [],  # Beispielwerte für Warmwasser-Last in kW (8760 Stunden)
+hot_water_load_camper = data_frame["Warmwasser_Last [kW]"]  # Beispielwerte für Warmwasser-Last in kW (8760 Stunden)
 n.add(
     "Load",
     "warm_water_load",
     bus="hot_water",
     p_set=hot_water_load_camper,  # Beispielwerte für Warmwasser-Last in kW (8760 Stunden)
 )
+
+n.optimize(solver_name="gurobi")  # Optimierung des Netzwerks
+
+print(n.generators.p_nom_opt)
+print(n.storage_units.p_nom_opt)
