@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Feb  1 10:35:32 2026
 
-@author: avick
-"""
 
 import pypsa
 import pandas as pd
@@ -12,8 +7,8 @@ import matplotlib.pyplot as plt
 
 
 #Ort setzen wo nach einer Dateil gesucht werden soll
-#import os
-#os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
+import os
+os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
 
 
 loads_pv_temp_hourly = pd.read_csv("Temp_loads_pv_hourly_utf_8.csv", sep= ";", decimal = ",")
@@ -80,7 +75,7 @@ df_data["el_p_pu_heating"] = np.interp(outside_temperature, temp_heating, el_pow
 #6,4286 Euro pro kW
 price_per_module = 70
 p_nom_modul = 450
-price_pv_per_kw =  (price_per_module  /p_nom_modul)*1000 #preis pro kW
+price_pv_per_kw =  (price_per_module  /p_nom_modul)*1000 + 300 #preis pro kW
 lifetime_pv = 20
 network_1.add("Generator", 
               name = "pv",
@@ -286,31 +281,32 @@ cost_battery_exchange = 20000 #Kaufpreis bei t = 0 Jahre
 #Kaufpreis nach Ablauf der Lifetime
 exchange_battery_van_in_future = inflation_factor * cost_battery_exchange 
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_battery_van_in_future = annuity( exchange_battery_van_in_future / p_nom_kw_eSprinter , lifetime_years_eSprinter)
+annuity_exchange_battery_van_in_future = annuity( exchange_battery_van_in_future , lifetime_years_eSprinter)
 
 #Batterie
 #Kaufpreis nach Ablauf der Lifetime
 exchange_battery_small_in_future = inflation_factor * capex_euro_battery
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_battery_small_in_future = annuity(exchange_battery_small_in_future / p_nom_kw_battery , lifetime_years_battery)
+annuity_exchange_battery_small_in_future = annuity(exchange_battery_small_in_future * network_1.storage_units.p_nom_opt.batteriespeicher  , lifetime_years_battery)
+
 
 #WP
 #Kaufpreis nach Ablauf der Lifetime
 exchange_wp_in_future = inflation_factor * capex_euro_heatpump
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_wp_in_future = annuity( exchange_wp_in_future / p_nom_kw_heatpump_el , lifetime_years_heatpump )
+annuity_exchange_wp_in_future = annuity( exchange_wp_in_future * network_1.links.p_nom_opt.waermepumpe , lifetime_years_heatpump )
 
 #Warmwasserspeicher
 #Kaufpreis nach Ablauf der Lifetime
 exchange_hot_water_storage_in_future = inflation_factor * capex_euro_hot_water_storage
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_hot_water_storage_in_future = annuity(exchange_hot_water_storage_in_future / p_nom_kw_hot_water_storage , lifetime_years_hot_water_storage )
+annuity_exchange_hot_water_storage_in_future = annuity(exchange_hot_water_storage_in_future * network_1.storage_units.p_nom_opt.warmwasserspeicher , lifetime_years_hot_water_storage )
 
 #Boiler
 #Kaufpreis nach Ablauf der Lifetime
 exchange_boiler_in_future = inflation_factor * capex_euro_boiler
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_boiler_in_future = annuity( exchange_boiler_in_future / p_nom_kw_boiler , lifetime_years_boiler )
+annuity_exchange_boiler_in_future = annuity( exchange_boiler_in_future * network_1.links.p_nom_opt.boiler , lifetime_years_boiler )
 
 ###############################
 
@@ -342,11 +338,11 @@ df_liftimes = pd.DataFrame(
         lifetime_years_hot_water_storage, lifetime_pv, 
         lifetime_years_heatpump, 0, 0,
         lifetime_years_boiler,
-        20-lifetime_years_eSprinter,
-        20-lifetime_years_battery,
-        20-lifetime_years_heatpump,
-        20-lifetime_years_hot_water_storage,
-        20-lifetime_years_boiler]},
+        lifetime_years_eSprinter, #keine 20 - Lifetime weil sonnst die investitionskosten nicht korrekt sind.
+        lifetime_years_battery,
+        lifetime_years_heatpump,
+        lifetime_years_hot_water_storage,
+        lifetime_years_boiler]},
     index = ["Lebendsauer_Batterie_Van", "Lebensdauer_Batterie_PV",
              "Lebensdauer_Warmwasserspeicher", "Lebensdauer_PV",
              "Lebensdauer_WP", "Keine Lebensdauer" , "Keine Lebensdauer",
@@ -363,7 +359,10 @@ df_liftimes = pd.DataFrame(
 
 df_invest_cost_1 = df_invest_cost_1_annuity.mul(df_liftimes.to_numpy())
 
-invest_cost_1 = round(df_invest_cost_1.sum(), 2)
+#axis = 0 --> aus einer Spalte einzelne Zeilen addieren
+invest_cost_1 = round(df_invest_cost_1.loc[["batterie_van", "batteriespeicher","warmwasserspeicher",
+                                            "pv", "waermepumpe", "boiler", "Van_Batterie_Austausch",
+                                            "WP_Austausch", "Warmwasserspeicher_Austausch", "Boiler_Austausch"]].sum(axis = 0), 2)
 #df_invest_cost_1 = df_invest_cost_1_annuity * df_liftimes
 
 ###############################
@@ -379,6 +378,15 @@ print("Installierte Wärmespeichergröße", round(warmwasserspeicher_p_nom_opt_i
 print("Die Investitionskosten belaufen sich auf:", invest_cost_1, "Euro, für einen Zeitraum von 20 Jahren")
 print("Die Betriebskosten belaufen sich auf:", operational_cost_1, "Euro/Jahr")
 
+#Investitionskosten am Anfang
+invest_cost_1_begin = round(df_invest_cost_1.loc[["batterie_van", "batteriespeicher","warmwasserspeicher",
+                                            "pv", "waermepumpe", "boiler"]].sum(axis = 0), 2)
+#Kosten bei Austausch
+invest_cost_1_change = round(df_invest_cost_1.loc[["Van_Batterie_Austausch",
+                                            "WP_Austausch", "Warmwasserspeicher_Austausch", "Boiler_Austausch"]].sum(axis = 0), 2)
+
+print("Investiotionskosten am Anfang", invest_cost_1_begin , "Euro")
+print("Investionskosten für den Austausch", invest_cost_1_change, "Euro")
 
 ############################### Diagramme zeichnen lassen
 

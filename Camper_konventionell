@@ -1,11 +1,14 @@
+
+
+
 import pypsa
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 #Ort setzen wo nach einer Dateil gesucht werden soll
-#import os
-#os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
+import os
+os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
 
 
 loads_pv_temp_hourly = pd.read_csv("Temp_loads_pv_hourly_utf_8.csv", sep= ";", decimal = ",")
@@ -255,25 +258,26 @@ inflation_factor = 1.03**10
 #Kaufpreis nach Ablauf der Lifetime
 exchange_battery_small_in_future = inflation_factor * capex_euro_battery
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_battery_small_in_future = annuity(exchange_battery_small_in_future / p_nom_kw_battery , lifetime_years_battery)
+annuity_exchange_battery_small_in_future = annuity(exchange_battery_small_in_future * network_2.storage_units.p_nom_opt.batteriespeicher , lifetime_years_battery)
+
 
 #WP
 #Kaufpreis nach Ablauf der Lifetime
 exchange_wp_in_future = inflation_factor * capex_euro_heatpump
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_wp_in_future = annuity( exchange_wp_in_future / p_nom_kw_heatpump_el , lifetime_years_heatpump )
+annuity_exchange_wp_in_future = annuity( exchange_wp_in_future * network_2.links.p_nom_opt.waermepumpe_cooling , lifetime_years_heatpump )
 
 #Warmwasserspeicher
 #Kaufpreis nach Ablauf der Lifetime
 exchange_hot_water_storage_in_future = inflation_factor * capex_euro_hot_water_storage
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_hot_water_storage_in_future = annuity(exchange_hot_water_storage_in_future / p_nom_kw_hot_water_storage , lifetime_years_hot_water_storage )
+annuity_exchange_hot_water_storage_in_future = annuity(exchange_hot_water_storage_in_future * network_2.storage_units.p_nom_opt.warmwasserspeicher , lifetime_years_hot_water_storage )
 
-#Boiler
+#Kombi heater --> Diesel heizung
 #Kaufpreis nach Ablauf der Lifetime
 exchange_kombi_heizung_in_future = inflation_factor * capital_cost_kombi_heater
 #Annuität des Kaufpreises nach Ablauf der Lifetime über die nächste Lifetime
-annuity_exchange_kombi_heizung_in_future = annuity( exchange_kombi_heizung_in_future / p_kombi_heater , lifetime_kombi_heater) #operatiosnkosten
+annuity_exchange_kombi_heizung_in_future = annuity( exchange_kombi_heizung_in_future * network_2.links.p_nom_opt.dieselheizung , lifetime_kombi_heater) #operatiosnkosten
 ###############################
 
 
@@ -305,10 +309,10 @@ df_liftimes = pd.DataFrame(
         lifetime_kombi_heater,
         0, 0,
         lifetime_years_heatpump ,
-        20, 20-lifetime_years_battery,
-        20-lifetime_years_heatpump,
-        20-lifetime_years_hot_water_storage,
-        20-lifetime_kombi_heater]},
+        20, lifetime_years_battery,
+        lifetime_years_heatpump,
+        lifetime_years_hot_water_storage,
+        lifetime_kombi_heater]},
     index = ["Lebendsauer_Batteriespeicher",
              "Lebensdauer_Warmwasserspeicher", "Lebensdauer_Dieselversorgung",
              "Lebensdauer_Diesel_Generator", "Lebensdauer_Dieselheizung",
@@ -325,7 +329,11 @@ df_liftimes = pd.DataFrame(
 
 df_invest_cost_2 = df_invest_cost_2_annuity.mul(df_liftimes.to_numpy())
 
-invest_cost_2 = round(df_invest_cost_2.sum(), 2)
+#axis = 0 --> aus einer Spalte einzelne Zeilen addieren
+invest_cost_2 = round(df_invest_cost_2.loc[["batteriespeicher", "warmwasserspeicher", "diesel_generator", 
+                                            "dieselheizung", "waermepumpe_cooling", "Sprinter", "Batterie_Austausch", 
+                                            "WP_Austausch", "Kombi_Heizung_Austausch"]].sum(axis = 0), 2)
+
 #df_invest_cost_1 = df_invest_cost_1_annuity * df_liftimes
 
 ###############################
@@ -340,8 +348,17 @@ print("Installierte Wärmespeichergröße", round(warmwasserspeicher_p_nom_opt_i
 print("Die Investitionskosten belaufen sich auf:", invest_cost_2, "Euro, für einen Zeitraum von 20 Jahren")
 print("Die Betriebskosten belaufen sich auf:", operational_cost_2, "Euro/Jahr")
 
-print(network_2.links.p_nom_opt)
 
+#Investitionskosten am Anfang
+invest_cost_1_begin = round(df_invest_cost_2.loc[["batteriespeicher","warmwasserspeicher",
+                                            "diesel_generator", "dieselheizung", "waermepumpe_cooling", 
+                                            "Sprinter"]].sum(axis = 0), 2)
+#Kosten bei Austausch
+invest_cost_1_change = round(df_invest_cost_2.loc[["Batterie_Austausch",
+                                            "WP_Austausch", "Warmwasserspeicher_Austausch", "Kombi_Heizung_Austausch"]].sum(axis = 0), 2)
+
+print("Investiotionskosten am Anfang", invest_cost_1_begin , "Euro")
+print("Investionskosten für den Austausch", invest_cost_1_change, "Euro")
 
 
 ############################### Diagramme zeichnen lassen
