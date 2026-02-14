@@ -1,5 +1,3 @@
-
-
 import pypsa
 import pandas as pd
 import numpy as np
@@ -7,13 +5,13 @@ import matplotlib.pyplot as plt
 
 
 #Ort setzen wo nach einer Dateil gesucht werden soll
-#import os
-#os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
+import os
+os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
 
 
 loads_pv_temp_hourly = pd.read_csv("Temp_loads_pv_hourly_utf_8.csv", sep= ";", decimal = ",")
 
-electrical_load = loads_pv_temp_hourly["Elektrische_Last [kW]"]
+electrical_load = loads_pv_temp_hourly["Elektrische_Last [kW]"] * 0.25   #mal 0,25 aufgrund fehlender Umrechnung in der Userstory
 warmwasser_load = loads_pv_temp_hourly["Warmwasser_Last [kW]"]
 outside_temperature = loads_pv_temp_hourly[" Außentemperatur [ºC]"]
 pv_p_nom_pu = loads_pv_temp_hourly["PV_Erzeugung [kW]"]
@@ -75,14 +73,14 @@ df_data["el_p_pu_heating"] = np.interp(outside_temperature, temp_heating, el_pow
 #6,4286 Euro pro kW
 price_per_module = 70
 p_nom_modul = 450
-price_pv_per_kw =  (price_per_module  /p_nom_modul)*1000 + 300 #preis pro kW
+price_pv_per_kw =  (price_per_module  /p_nom_modul)*1000 + 800 #preis pro kW
 lifetime_pv = 20
 network_1.add("Generator", 
               name = "pv",
               bus = "electricity",
               
               p_nom_extendable = True,
-              p_max_pu = loads_pv_temp_hourly["PV_Erzeugung [kW]"],
+              p_max_pu = pv_p_nom_pu,
               lifetime = lifetime_pv,
               
               capital_cost = annuity(price_pv_per_kw, lifetime_pv )
@@ -196,7 +194,7 @@ network_1.add("Link",
 
 ########################### Elektrischer Boiler (Camper, extendable) ###########################
 # Beispiel: Truma Therme TT2 (elektrischer Warmwasserbereiter für Camper)
-efficiency_boiler = 0.98  # Wirkungsgrad (98%)
+efficiency_boiler = 0.98  # Wirkungsgrad (98%) sehr hohe Effizienz annahme
 p_nom_kw_boiler = 1.4  # Elektrische Nennleistung in kW
 capex_euro_boiler = 800.0  # Investitionskosten in Euro (Richtwert)
 lifetime_years_boiler = 15  # Lebensdauer in Jahren
@@ -246,6 +244,7 @@ network_1.add("StorageUnit",
 
 #optimieren
 network_1.optimize(solver_name = "gurobi", threads = 1, method = 2)
+
 
 # Investitionskosten aus Netzwerk 1 ausgeben
 
@@ -360,7 +359,7 @@ invest_cost_1 = round(df_invest_cost_1.loc[["batterie_van", "batteriespeicher","
 print("Installierte PVleistung", round(network_1.generators.p_nom_opt.pv,2), "kW")
 print("Installierte Wärmepumpenleistung", round(network_1.links.p_nom_opt.waermepumpe,2), "kW elektrisch")
 print("Installierte Batterspeicherkapazität", round(network_1.storage_units.p_nom_opt.batteriespeicher,2), "kWh elektrisch")
-print("Installierte Boilserleistung", round(network_1.links.p_nom_opt.boiler,2), "kW elektrisch")
+print("Installierte Boilerleistung", round(network_1.links.p_nom_opt.boiler,2), "kW elektrisch")
 print("Installierte Wärmespeicherleistungleistung", round(network_1.storage_units.p_nom_opt.warmwasserspeicher,2), "kWh elektrisch")
 warmwasserspeicher_p_nom_opt_in_liter = network_1.storage_units.p_nom_opt.warmwasserspeicher * 3600 / 40 / 4.18
 print("Installierte Wärmespeichergröße", round(warmwasserspeicher_p_nom_opt_in_liter ,2), "Liter")
@@ -379,12 +378,12 @@ print("Investionskosten für den Austausch", invest_cost_1_change, "Euro")
 
 ############################### Diagramme zeichnen lassen
 
-#Eine Woche
+############################### Eine Woche
 fig, ax = plt.subplots()
 
 network_1.generators_t.p.iloc[168:336].plot(ax=ax)
 
-ax.set_xlabel("Zeit")
+ax.set_xlabel("Zeit [h]")
 ax.set_ylabel("Leistung [kW]")
 ax.set_title("Generatorleistung")
 ax.grid(True)
@@ -395,7 +394,7 @@ fig, ax_links = plt.subplots()
 
 network_1.links_t.p0.iloc[168:336].plot(ax=ax_links)
 
-ax_links.set_xlabel("Zeit")
+ax_links.set_xlabel("Zeit [h]")
 ax_links.set_ylabel("Leistung [kW]")
 ax_links.set_title("Links Leistungen")
 ax_links.grid(True)
@@ -406,19 +405,34 @@ fig, ax_loads_week = plt.subplots()
 
 network_1.loads_t.p.iloc[168:336].plot(ax = ax_loads_week)
 
-ax_loads_week.set_xlabel("Zeit")
+ax_loads_week.set_xlabel("Zeit [h]")
 ax_loads_week.set_ylabel("Leistung [kW]")
 ax_loads_week.set_title("Loads Leistungen")
 ax_loads_week.grid(True)
 
 plt.show()
 
-#Ein Tag
+fig, ax_storage_units_week = plt.subplots()
+
+network_1.storage_units_t.p.iloc[168:336].plot(ax = ax_storage_units_week)
+
+ax_storage_units_week.set_xlabel("Zeit [h]")
+ax_storage_units_week.set_ylabel("Leistung [kW]")
+ax_storage_units_week.set_title("Speicher Leistung")
+ax_storage_units_week.grid(True)
+
+plt.show()
+
+
+
+
+
+############################### Ein Tag
 fig, ax_gen_day = plt.subplots()
 
 network_1.generators_t.p.iloc[168:192].plot(ax=ax_gen_day)
 
-ax_gen_day.set_xlabel("Zeit")
+ax_gen_day.set_xlabel("Zeit [h]")
 ax_gen_day.set_ylabel("Leistung [kW]")
 ax_gen_day.set_title("Generatorleistung")
 ax_gen_day.grid(True)
@@ -429,20 +443,31 @@ fig, ax_links_day = plt.subplots()
 
 network_1.links_t.p0.iloc[168:192].plot(ax=ax_links_day)
 
-ax_links_day.set_xlabel("Zeit")
+ax_links_day.set_xlabel("Zeit [h]")
 ax_links_day.set_ylabel("Leistung [MW]")
 ax_links_day.set_title("Links Leistungen")
 ax_links_day.grid(True)
 
 plt.show()
 
-fig, ax_loads_week = plt.subplots()
+fig, ax_loads_day = plt.subplots()
 
-network_1.loads_t.p.iloc[168:192].plot(ax = ax_loads_week)
+network_1.loads_t.p.iloc[168:192].plot(ax = ax_loads_day)
 
-ax_loads_week.set_xlabel("Zeit")
-ax_loads_week.set_ylabel("Leistung [kW]")
-ax_loads_week.set_title("Loads Leistungen")
-ax_loads_week.grid(True)
+ax_loads_day.set_xlabel("Zeit [h]")
+ax_loads_day.set_ylabel("Leistung [kW]")
+ax_loads_day.set_title("Loads Leistungen")
+ax_loads_day.grid(True)
+
+plt.show()
+
+fig, ax_storage_units_day = plt.subplots()
+
+network_1.storage_units_t.p.iloc[168:192].plot(ax = ax_storage_units_day)
+
+ax_storage_units_day.set_xlabel("Zeit [h]")
+ax_storage_units_day.set_ylabel("Leistung [kW]")
+ax_storage_units_day.set_title("Speicher Leistung")
+ax_storage_units_day.grid(True)
 
 plt.show()

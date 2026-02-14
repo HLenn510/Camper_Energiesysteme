@@ -1,6 +1,3 @@
-
-
-
 import pypsa
 import pandas as pd
 import numpy as np
@@ -13,9 +10,9 @@ os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
 
 loads_pv_temp_hourly = pd.read_csv("Temp_loads_pv_hourly_utf_8.csv", sep= ";", decimal = ",")
 
-electrical_load = loads_pv_temp_hourly["Elektrische_Last [kW]"]
+electrical_load = loads_pv_temp_hourly["Elektrische_Last [kW]"] * 0.25   #mal 0,25 aufgrund fehlender Umrechnung in der Userstory
 warmwasser_load = loads_pv_temp_hourly["Warmwasser_Last [kW]"]
-outside_temperature = loads_pv_temp_hourly[" Außentemperatur [ºC]"]
+outside_temperature = loads_pv_temp_hourly[" Außentemperatur [ºC]"] 
 pv_p_nom_pu = loads_pv_temp_hourly["PV_Erzeugung [kW]"]
 heating_load_e_van = loads_pv_temp_hourly["Wärme_Last_elektrisch 23°C [kW]"]
 cooling_load_e_van = loads_pv_temp_hourly["Kühl_Last_elektrisch 23°C [kW]"]
@@ -106,7 +103,7 @@ capital_cost_sprinter = annuity (capital_cost_sprinter_price, lifetime_Sprinter)
 #Dieselkosten
 diesel_energy_density = 9.8
 diesel_price_per_liter = 1.70
-diesel_marginal_cost = diesel_price_per_liter / diesel_energy_density #kWh
+diesel_marginal_cost = diesel_price_per_liter  # Euro/Liter
 
 #output dieses Generators ist Diesel --> Umwandlung erst bei den Links
 network_2.add("Generator",
@@ -135,7 +132,7 @@ network_2.add(
     bus0 = "diesel", 
     bus1 = "electricity",         
     p_nom_extendable = True, 
-    efficiency = 0.35,      # 30% Wirkungsgrad bei Teillast und 37 % Wirkungsgrad bei Volllast
+    efficiency = 0.35 ,      # 30% Wirkungsgrad bei Teillast und 37 % Wirkungsgrad bei Volllast
     capital_cost = annuity_diesel_generator, 
     lifetime = lifetime_diesel_generator
 )
@@ -147,7 +144,7 @@ capital_cost_kombi_heater = 1795
 lifetime_kombi_heater = 10
 capital_cost_kombi_heater_annuity = annuity(capital_cost_kombi_heater, lifetime_kombi_heater)
 p_kombi_heater = 4.0
-efficiency_kombi_heater = 0.629      #0.63 zu 0.629 elektrische verluste
+efficiency_kombi_heater = 0.629    #0.63 zu 0.629 elektrische verluste
 #efficiency2_kombi_heater= -0.012 #durch elektrische Verluste
 
 network_2.add(
@@ -217,7 +214,7 @@ network_2.add("StorageUnit",
 
     # Technische Daten
     p_nom_extendable = True,
-    max_hours = 1/12,  # Annahme ein Duschvorgang pro Stunde maximal --> 5 Minuten in Stunden = 1/12
+    max_hours = (1/12),  # Annahme ein Duschvorgang pro Stunde maximal --> 5 Minuten in Stunden = 1/12
 
     # Wirtschaftliche Daten (Annualisiert)
     capital_cost = annuity(capex_euro_hot_water_storage_per_kwh * capacity_kwh_hot_water_storage, lifetime_years_hot_water_storage),
@@ -342,11 +339,12 @@ print("Installierte Batterspeicherkapazität", round(network_2.storage_units.p_n
 print("Installierte Wärmepumpenleistung", round(network_2.links.p_nom_opt.waermepumpe_cooling,2), "kW elektrisch")
 print("Installierte Diesel_Generator", round(network_2.links.p_nom_opt.diesel_generator,2), "kWh elektrisch")
 print("Installierte Diesel Kombi Heizungsleistung", round(network_2.links.p_nom_opt.dieselheizung,2), "kW elektrisch")
-print("Installierte Wärmespeicherleistungleistung", round(network_2.storage_units.p_nom_opt.warmwasserspeicher,2), "kWh elektrisch")
+print("Installierte Wärmespeicherleistungleistung", round(network_2.storage_units.p_nom_opt.warmwasserspeicher,2), "kW elektrisch")
 warmwasserspeicher_p_nom_opt_in_liter = network_2.storage_units.p_nom_opt.warmwasserspeicher * 3600 / 40 / 4.18
 print("Installierte Wärmespeichergröße", round(warmwasserspeicher_p_nom_opt_in_liter ,2), "Liter")
 print("Die Investitionskosten belaufen sich auf:", invest_cost_2, "Euro, für einen Zeitraum von 20 Jahren")
 print("Die Betriebskosten belaufen sich auf:", operational_cost_2, "Euro/Jahr")
+#print(network_2.generators_t.p.sum() * network_2.generators.marginal_cost / diesel_energy_density)
 
 
 #Investitionskosten am Anfang
@@ -368,7 +366,7 @@ fig, ax = plt.subplots()
 
 network_2.generators_t.p.iloc[168:336].plot(ax=ax)
 
-ax.set_xlabel("Zeit")
+ax.set_xlabel("Zeit [h]")
 ax.set_ylabel("Leistung [kW]")
 ax.set_title("Generatorleistung")
 ax.grid(True)
@@ -379,19 +377,45 @@ fig, ax_links = plt.subplots()
 
 network_2.links_t.p0.iloc[168:336].plot(ax=ax_links)
 
-ax_links.set_xlabel("Zeit")
+ax_links.set_xlabel("Zeit [h]")
 ax_links.set_ylabel("Leistung [kW]")
 ax_links.set_title("Links Leistungen")
 ax_links.grid(True)
 
 plt.show()
 
+fig, ax_loads_week = plt.subplots()
+
+network_2.loads_t.p.iloc[168:336].plot(ax = ax_loads_week)
+
+ax_loads_week.set_xlabel("Zeit [h]")
+ax_loads_week.set_ylabel("Leistung [kW]")
+ax_loads_week.set_title("Loads Leistungen")
+ax_loads_week.grid(True)
+
+plt.show()
+
+
+fig, ax_storage_units_week = plt.subplots()
+
+network_2.storage_units_t.p.iloc[168:336].plot(ax = ax_storage_units_week)
+
+ax_storage_units_week.set_xlabel("Zeit [h]")
+ax_storage_units_week.set_ylabel("Leistung [kW]")
+ax_storage_units_week.set_title("Speicher Leistung")
+ax_storage_units_week.grid(True)
+
+plt.show()
+
+
+
+
 #Ein Tag
 fig, ax_gen_day = plt.subplots()
 
 network_2.generators_t.p.iloc[168:192].plot(ax=ax_gen_day)
 
-ax_gen_day.set_xlabel("Zeit")
+ax_gen_day.set_xlabel("Zeit [h]")
 ax_gen_day.set_ylabel("Leistung [kW]")
 ax_gen_day.set_title("Generatorleistung")
 ax_gen_day.grid(True)
@@ -402,9 +426,31 @@ fig, ax_links_day = plt.subplots()
 
 network_2.links_t.p0.iloc[168:192].plot(ax=ax_links_day)
 
-ax_links_day.set_xlabel("Zeit")
+ax_links_day.set_xlabel("Zeit [h]")
 ax_links_day.set_ylabel("Leistung [kW]")
 ax_links_day.set_title("Links Leistungen")
 ax_links_day.grid(True)
+
+plt.show()
+
+fig, ax_loads_day = plt.subplots()
+
+network_2.loads_t.p.iloc[168:192].plot(ax = ax_loads_day)
+
+ax_loads_day.set_xlabel("Zeit [h]")
+ax_loads_day.set_ylabel("Leistung [kW]")
+ax_loads_day.set_title("Loads Leistungen")
+ax_loads_day.grid(True)
+
+plt.show()
+
+fig, ax_storage_units_day = plt.subplots()
+
+network_2.storage_units_t.p.iloc[168:192].plot(ax = ax_storage_units_day)
+
+ax_storage_units_day.set_xlabel("Zeit [h]")
+ax_storage_units_day.set_ylabel("Leistung [kW]")
+ax_storage_units_day.set_title("Speicher Leistung")
+ax_storage_units_day.grid(True)
 
 plt.show()
