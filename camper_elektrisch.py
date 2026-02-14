@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 
 
 #Ort setzen wo nach einer Dateil gesucht werden soll
-import os
-os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
+#import os
+#os.chdir(r"C:\Users\avick\.spyder-py3\Pypsa\Übungscodes\ÜBbung 3")
 
 
 loads_pv_temp_hourly = pd.read_csv("Temp_loads_pv_hourly_utf_8.csv", sep= ";", decimal = ",")
@@ -246,17 +246,6 @@ network_1.add("StorageUnit",
 
 #optimieren
 network_1.optimize(solver_name = "gurobi", threads = 1, method = 2)
-
-
-#Ergebnisse ausgeben Netzwerk 1
-#invest_cost_stores_1 = network_1.storage_units.p_nom_opt * network_1.storage_units_capital_cost * network_1.storage_units.lifetime
-#invest_cost_generators_1 = network_1.generators.p_nom_opt * network_1.generators_capital_cost * network_1.generators.lifetime
-#invest_cost_links_1 = network_1.links.p_nom_opt * network_1.links_capital_cost * network_1.links.lifetime
-#df_invest_cost_1 = pd.concat([invest_cost_stores_1, invest_cost_generators_1 * invest_cost_links_1])
-#invest_cost_1 = round(df_invest_cost_1.sum() ,2)
-#
-
-
 
 # Investitionskosten aus Netzwerk 1 ausgeben
 
