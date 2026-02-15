@@ -103,7 +103,7 @@ capital_cost_sprinter = annuity (capital_cost_sprinter_price, lifetime_Sprinter)
 #Dieselkosten
 diesel_energy_density = 9.8
 diesel_price_per_liter = 1.70
-diesel_marginal_cost = diesel_price_per_liter  # Euro/Liter
+diesel_marginal_cost = diesel_price_per_liter / diesel_energy_density # Euro/Liter
 
 #output dieses Generators ist Diesel --> Umwandlung erst bei den Links
 network_2.add("Generator",
