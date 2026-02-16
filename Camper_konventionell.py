@@ -454,3 +454,67 @@ ax_storage_units_day.set_title("Speicher Leistung")
 ax_storage_units_day.grid(True)
 
 plt.show()
+
+
+################################################ Erzeugungs und Verbrauch Diagramm für die Präsi
+
+fig, ax_presentation_day = plt.subplots()
+
+network_2.loads_t.p["electrical_load"].iloc[168:192].plot(ax=ax_presentation_day, label = "electrical_load")
+#network_2.links_t.p1["diesel_generator"].iloc[168:192].plot(ax=ax_presentation_day, label = "diesel_generator")
+dg = network_2.links_t.p1["diesel_generator"].iloc[168:192] #invertieren da der link komisch dargestellt wird
+(-dg).plot(ax=ax_presentation_day, label="diesel_generator")
+network_2.storage_units_t.p["batteriespeicher"].iloc[168:192].plot(ax=ax_presentation_day, label ="batteriespeicher")
+network_2.links_t.p0["waermepumpe_cooling"].iloc[168:192].plot(ax=ax_presentation_day, label = "waermepumpe_cooling")
+
+ax_presentation_day.set_title("Stromerzeugung und Verbrauch")
+ax_presentation_day.set_xlabel("Zeit [h]")
+ax_presentation_day.set_ylabel("Leistung [kW]")
+ax_presentation_day.legend()
+ax_presentation_day.grid(True)
+
+
+plt.show()
+
+
+
+################################################ Erzeugungs und Verbrauch Diagramme
+
+
+fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(8, 10))
+
+#Strom
+network_2.loads_t.p["electrical_load"].iloc[168:192].plot(ax=axes[0], label = "electrical_load")
+network_2.links_t.p1["diesel_generator"].iloc[168:192].plot(ax=axes[0], label = "diesel_generator")
+network_2.storage_units_t.p["batteriespeicher"].iloc[168:192].plot(ax=axes[0], label ="batteriespeicher")
+
+axes[0].set_title("Stromerzeugung und Verbrauch")
+axes[0].legend()
+axes[0].grid(True)
+
+#Warmwasser
+network_2.loads_t.p["hot_water_load"].iloc[168:192].plot(ax=axes[1], label = "hot_water_load")
+network_2.links_t.p0["warmwater"].iloc[168:192].plot(ax=axes[1], label = "warmwater")
+
+axes[1].set_title("Warmwassererzeugung und Verbrauch")
+axes[1].legend()
+axes[1].grid(True)
+
+#Heizen
+network_2.loads_t.p["thermal_heating_load"].iloc[168:192].plot(ax=axes[2], label = "thermal_heating_load")
+network_2.links_t.p0["heating"].iloc[168:192].plot(ax=axes[2], label = "heating")
+
+axes[2].set_title("Wärmeerzeugung und Verbrauch")
+axes[2].legend()
+axes[2].grid(True)
+
+#Kühlen
+network_2.loads_t.p["thermal_cooling_load"].iloc[168:192].plot(ax=axes[3], label = "thermal_cooling_load")
+network_2.links_t.p0["waermepumpe_cooling"].iloc[168:192].plot(ax=axes[3], label = "waermepumpe_cooling")
+
+axes[3].set_title("Kühlbedarf und Bereitstellung")
+axes[3].legend()
+axes[3].grid(True)
+
+plt.tight_layout()
+plt.show()
